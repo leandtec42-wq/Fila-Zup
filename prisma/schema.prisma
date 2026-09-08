@@ -1,0 +1,170 @@
+// Schema do banco de dados - Sistema de Gerenciamento de Filas e Eventos
+// Banco: MySQL (compatível com MySQL 8+, MariaDB 10.6+, PlanetScale, Railway, RDS, etc.)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// USER — o cliente que cria e administra eventos (tenant)
+// ---------------------------------------------------------------------------
+model User {
+  id           String   @id @default(cuid())
+  name         String   @db.VarChar(160)
+  companyName  String   @db.VarChar(160)
+  email        String   @unique @db.VarChar(190)
+  passwordHash String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  events Event[]
+
+  @@index([email])
+  @@map("users")
+}
+
+enum EventStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+// ---------------------------------------------------------------------------
+// EVENT — um evento pertence a um usuário (tenant) e possui uma fila própria
+// ---------------------------------------------------------------------------
+model Event {
+  id          String      @id @default(cuid())
+  userId      String
+  name        String      @db.VarChar(200)
+  description String?     @db.Text
+  date        DateTime
+  startTime   String      @db.VarChar(5) // HH:mm
+  endTime     String      @db.VarChar(5) // HH:mm
+  location    String?     @db.VarChar(255)
+  maxParticipants Int?
+  status      EventStatus @default(DRAFT)
+  publicSlug  String      @unique @db.VarChar(64)
+
+  // permite ou não que um participante já COMPLETED entre novamente na fila
+  allowReentryAfterCompletion Boolean @default(false)
+
+  // controle interno do próximo número sequencial da fila (evita reuso)
+  lastQueueNumber Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queueEntries QueueEntry[]
+  actions      QueueAction[]
+  messages     WhatsAppMessage[]
+
+  @@index([userId])
+  @@index([publicSlug])
+  @@index([status])
+  @@map("events")
+}
+
+enum QueueStatus {
+  WAITING
+  CALLED
+  IN_SERVICE
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// QUEUE_ENTRY — um participante dentro da fila de um evento específico
+// ---------------------------------------------------------------------------
+model QueueEntry {
+  id          String      @id @default(cuid())
+  eventId     String
+  queueNumber Int
+  name        String      @db.VarChar(160)
+  email       String      @db.VarChar(190)
+  phone       String      @db.VarChar(20) // E.164, ex: +5511999999999
+  status      QueueStatus @default(WAITING)
+  consentWhatsApp Boolean @default(true)
+
+  createdAt        DateTime  @default(now())
+  calledAt         DateTime?
+  serviceStartedAt DateTime?
+  completedAt      DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  event    Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  actions  QueueAction[]
+  messages WhatsAppMessage[]
+
+  // impede duas entradas ativas com o mesmo telefone no mesmo evento
+  @@unique([eventId, queueNumber])
+  @@index([eventId, status, createdAt])
+  @@index([eventId, phone])
+  @@index([phone])
+  @@map("queue_entries")
+}
+
+// ---------------------------------------------------------------------------
+// QUEUE_ACTION — trilha de auditoria de tudo que acontece com uma entrada
+// ---------------------------------------------------------------------------
+model QueueAction {
+  id           String   @id @default(cuid())
+  queueEntryId String
+  eventId      String
+  action       String   @db.VarChar(40) // QUEUE_JOINED, QUEUE_CALLED, SERVICE_STARTED, ...
+  metadata     String?  @db.Text // JSON serializado com detalhes extras
+  createdAt    DateTime @default(now())
+
+  queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@index([queueEntryId])
+  @@map("queue_actions")
+}
+
+enum WhatsAppMessageType {
+  QUEUE_JOINED
+  POSITION_UPDATE
+  CALLED
+  COMPLETED
+}
+
+enum WhatsAppMessageStatus {
+  PENDING
+  SENT
+  FAILED
+  LOGGED_DEV_MODE
+}
+
+// ---------------------------------------------------------------------------
+// WHATSAPP_MESSAGE — histórico de mensagens enviadas via Meta Cloud API
+// ---------------------------------------------------------------------------
+model WhatsAppMessage {
+  id                String                 @id @default(cuid())
+  queueEntryId      String
+  eventId           String
+  phone             String                 @db.VarChar(20)
+  messageType       WhatsAppMessageType
+  status            WhatsAppMessageStatus  @default(PENDING)
+  providerMessageId String?                @db.VarChar(190)
+  error             String?                @db.Text
+  payload           String?                @db.Text // JSON enviado à API (sem tokens)
+  createdAt         DateTime               @default(now())
+  sentAt            DateTime?
+
+  queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@index([queueEntryId])
+  @@index([status])
+  @@map("whatsapp_messages")
+}

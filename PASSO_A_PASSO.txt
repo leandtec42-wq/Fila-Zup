@@ -1,0 +1,310 @@
+==================================================================
+ZUP - PASSO A PASSO DE TUDO QUE FOI FEITO E COMO RODAR O PROJETO
+==================================================================
+
+Este arquivo explica, em ordem, tudo que foi construído no projeto e o
+passo a passo exato para você colocar o sistema para rodar no seu
+computador, no VS Code.
+
+------------------------------------------------------------------
+1. O QUE FOI CONSTRUÍDO (RESUMO DO QUE ACONTECEU, EM ORDEM)
+------------------------------------------------------------------
+
+1.1. Planejamento
+     - Defini a stack: Next.js 14 + TypeScript + Tailwind CSS + Prisma +
+       NextAuth + Recharts + Zod + React Hook Form + Meta WhatsApp Cloud API.
+     - Você pediu para o banco ser MySQL (no início eu ia usar PostgreSQL,
+       que já estava disponível neste ambiente de desenvolvimento, mas
+       troquei para MySQL a seu pedido).
+
+1.2. Estrutura do projeto
+     - Criei o projeto Next.js do zero (package.json, tsconfig.json,
+       tailwind.config.ts, next.config.mjs, .eslintrc.json, .gitignore).
+     - Defini a identidade visual: roxo (#650199) como cor principal e
+       verde-lima (#CBDA59) como cor de destaque/ação, com tokens de design
+       no tailwind.config.ts (--primary, --accent, --success, --warning,
+       --danger, etc.).
+     - Depois, quando você enviou a logo oficial do Zup, extraí as cores
+       exatas dos pixels da imagem (roxo #650199 e verde-lima #CBDA59) e
+       recalculei toda a paleta (tons claros/escuros, hover, sombras) a
+       partir delas — substituindo os valores aproximados usados antes.
+     - Salvei a logo enviada em public/logo.png (usada como ícone/favicon
+       do site e no cabeçalho de todas as páginas) e troquei o nome do
+       produto de "FilaFlow" para "Zup" em todo o projeto.
+
+1.3. Banco de dados (Prisma + MySQL)
+     - Criei o schema completo em prisma/schema.prisma com 5 tabelas:
+       User, Event, QueueEntry, QueueAction (auditoria) e WhatsAppMessage
+       (histórico de mensagens).
+     - Criei prisma/seed.ts com 1 usuário demo, 2 eventos demo e cerca de
+       70 participantes fictícios (para os gráficos aparecerem
+       preenchidos).
+
+1.4. Autenticação
+     - Configurei o NextAuth (Auth.js) com login por e-mail/senha
+       (Credentials Provider).
+     - Senhas são armazenadas com hash bcrypt (nunca em texto puro).
+     - Criei um middleware (src/middleware.ts) que bloqueia o acesso a
+       /dashboard/* para quem não está logado.
+
+1.5. Componentes de interface (design system)
+     - Criei os componentes reutilizáveis em src/components/ui: Button,
+       Input, PhoneInput, Card, Badge, Dialog (modal), Table, Toast
+       (notificações), StatCard, EmptyState, LoadingState, ConfirmDialog,
+       ChartCard.
+     - Criei Sidebar, Header, EventCard, QueueCard (fila em tempo real) e
+       ParticipantDetailDialog.
+
+1.6. Páginas do sistema
+     - Landing page (/) explicando o produto, benefícios, "como funciona"
+       e uma demonstração visual do dashboard.
+     - /cadastro e /login.
+     - /privacidade (política de privacidade / LGPD).
+     - /fila/[slug] — a página PÚBLICA onde qualquer pessoa entra na fila
+       sem precisar criar conta (nome, e-mail, WhatsApp e consentimento).
+     - /dashboard — visão geral com cards e gráficos.
+     - /dashboard/eventos — lista de eventos ("Meus eventos").
+     - /dashboard/eventos/novo — criação de evento.
+     - /dashboard/eventos/[id] — visão geral do evento.
+     - /dashboard/eventos/[id]/editar — edição do evento.
+     - /dashboard/eventos/[id]/fila — FILA EM TEMPO REAL, com o botão
+       gigante "CHAMAR PRÓXIMO".
+     - /dashboard/eventos/[id]/participantes — tabela com busca, filtros e
+       paginação.
+     - /dashboard/eventos/[id]/metricas — gráficos e métricas detalhadas.
+     - /dashboard/configuracoes — dados da conta e status da integração
+       com WhatsApp.
+
+1.7. Motor da fila (a parte mais crítica do sistema)
+     - Criei src/lib/queue.ts com toda a lógica de negócio:
+       * Número sequencial por evento, atribuído com incremento atômico no
+         banco (nunca reutiliza número, nunca duplica, mesmo com muita
+         gente entrando ao mesmo tempo).
+       * Bloqueio de duplicidade: o mesmo telefone não pode entrar duas
+         vezes na mesma fila enquanto estiver ativo.
+       * "Chamar próximo" protegido contra cliques concorrentes: se dois
+         administradores clicarem ao mesmo tempo, o sistema garante (via
+         atualização condicional no banco) que a mesma pessoa nunca seja
+         chamada duas vezes.
+       * Iniciar atendimento, finalizar atendimento, pular, cancelar.
+       * Exclusão de dados do participante (LGPD) — anonimiza nome,
+         e-mail e telefone.
+       * Posição na fila é sempre calculada em tempo real (nunca fica
+         desatualizada quando alguém é atendido, pulado ou cancelado).
+     - Registrei cada ação em uma tabela de auditoria (QueueAction):
+       QUEUE_JOINED, QUEUE_CALLED, SERVICE_STARTED, SERVICE_COMPLETED,
+       QUEUE_SKIPPED, QUEUE_CANCELLED, WHATSAPP_SENT, WHATSAPP_FAILED.
+
+1.8. Integração com WhatsApp (Meta Cloud API — oficial)
+     - Criei src/lib/whatsapp.ts (WhatsAppService) que chama a API oficial
+       da Meta (graph.facebook.com) via HTTPS, exatamente como documentado
+       pela Meta — nada de WhatsApp Web ou bibliotecas não oficiais.
+     - 4 mensagens automáticas: entrou na fila, atualização de posição,
+       foi chamado, atendimento concluído.
+     - Se as credenciais não estiverem configuradas no .env, o sistema
+       entra em "modo desenvolvimento": a mensagem fica registrada no
+       banco e aparece no console, mas nada é enviado de verdade — o
+       sistema NUNCA finge que enviou uma mensagem real.
+     - Criei a rota de webhook (/api/whatsapp/webhook) para verificação e
+       para receber confirmações de entrega da Meta.
+     - Documentei o passo a passo completo de configuração da Meta Cloud
+       API em docs/WHATSAPP.md (criar app, obter token, configurar
+       webhook, criar e aprovar templates).
+
+1.9. APIs (backend)
+     - Criei todas as rotas de API dentro de src/app/api, sempre validando
+       autenticação e posse do evento antes de qualquer ação (nenhum
+       cliente consegue ver ou alterar dados de outro cliente, mesmo
+       manipulando IDs manualmente).
+     - Validação de todos os dados de entrada com Zod no servidor (nunca
+       confiando só no frontend).
+     - Rate limiting nas rotas públicas para evitar spam.
+
+1.10. Métricas e gráficos
+     - Criei src/lib/metrics.ts com o cálculo de: total de participantes,
+       atendidos, aguardando, pulados, cancelados, tempo médio de espera,
+       tempo médio de atendimento, maior/menor tempo de espera, taxa de
+       atendimento e taxa de desistência.
+     - Gráficos com Recharts: participantes por evento, status dos
+       participantes (pizza), entradas por horário e atendimentos por
+       horário (linha/barra), com filtros de período (hoje / 7 dias / 30
+       dias).
+
+1.11. Tempo real
+     - A fila pública e o painel administrativo usam SWR com polling
+       curto e inteligente (a cada 4-15 segundos, dependendo da tela) para
+       parecer em tempo real sem sobrecarregar o servidor.
+
+1.12. Testes automatizados
+     - Criei testes com Vitest em tests/: normalização de telefone,
+       cálculo de métricas, motor de fila (incluindo o cenário de dois
+       cliques simultâneos em "chamar próximo") e isolamento multi-tenant.
+
+1.13. Documentação
+     - README.md completo com instalação, configuração, deploy e
+       troubleshooting.
+     - docs/WHATSAPP.md com o passo a passo da Meta Cloud API.
+     - Este arquivo (PASSO_A_PASSO.txt).
+
+------------------------------------------------------------------
+2. UM AVISO IMPORTANTE E HONESTO
+------------------------------------------------------------------
+
+O ambiente onde eu construí este projeto é um sandbox na nuvem que NÃO tem
+acesso à internet para baixar pacotes (o "npm install" não funciona aqui —
+ele retorna erro de conexão bloqueada). Por isso, eu não consegui rodar
+"npm install", "npm run build", "npm run lint" nem "npm test" aqui dentro
+para confirmar 100% que compila sem nenhum erro.
+
+O que eu fiz para compensar isso:
+- Escrevi todo o código manualmente, com muito cuidado, seguindo
+  exatamente os padrões oficiais do Next.js 14, Prisma, NextAuth, Zod e
+  React Hook Form.
+- Revisei o projeto inteiro à procura de imports não usados, componentes
+  faltando e inconsistências de tipos (encontrei e corrigi alguns
+  problemas nessa revisão, como um ícone importado sem uso e um campo de
+  formulário que precisava de ajuste no schema de validação).
+
+O que você vai precisar fazer (e é rápido — são os mesmos passos de
+qualquer projeto Next.js): rodar "npm install" e "npm run build" na sua
+máquina, que tem internet normal. Se aparecer algum erro de compilação, me
+avise a mensagem exata do erro que eu te ajudo a corrigir rapidamente.
+
+------------------------------------------------------------------
+3. PASSO A PASSO PARA RODAR NO SEU COMPUTADOR (VS CODE)
+------------------------------------------------------------------
+
+PASSO 1 — Ferramentas necessárias
+   - Instale o Node.js versão 18.18 ou superior (recomendado: 20 LTS)
+     Baixe em: https://nodejs.org/
+   - Tenha um servidor MySQL 8+ disponível. A forma mais fácil é usar
+     Docker (veja PASSO 3).
+
+PASSO 2 — Abrir o projeto no VS Code
+   - Extraia o arquivo .zip que te enviei em uma pasta.
+   - Abra essa pasta no VS Code (Arquivo > Abrir Pasta...).
+   - Abra o terminal integrado do VS Code (Terminal > Novo Terminal).
+
+PASSO 3 — Subir um banco MySQL (mais fácil com Docker)
+   Se você tem o Docker instalado, rode no terminal:
+
+     docker run --name zup-mysql -e MYSQL_ROOT_PASSWORD=password \
+       -e MYSQL_DATABASE=queue_saas -p 3306:3306 -d mysql:8
+
+   Se não tiver Docker, instale o MySQL normalmente e crie o banco:
+
+     mysql -u root -p -e "CREATE DATABASE queue_saas CHARACTER SET utf8mb4;"
+
+PASSO 4 — Instalar as dependências do projeto
+   No terminal do VS Code, dentro da pasta do projeto:
+
+     npm install
+
+PASSO 5 — Configurar o arquivo .env
+   Copie o arquivo de exemplo:
+
+     cp .env.example .env
+     (no Windows use: copy .env.example .env)
+
+   Abra o .env e preencha pelo menos:
+
+     DATABASE_URL="mysql://root:password@localhost:3306/queue_saas"
+     AUTH_SECRET="cole-aqui-um-valor-aleatorio-forte"
+     NEXTAUTH_URL="http://localhost:3000"
+     NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+   Para gerar um AUTH_SECRET forte, rode:
+
+     openssl rand -base64 32
+
+   (Se não tiver o comando openssl, qualquer string aleatória longa serve
+   para desenvolvimento.)
+
+   As variáveis META_WHATSAPP_* podem ficar em branco por enquanto — o
+   sistema funciona em modo desenvolvimento sem elas.
+
+PASSO 6 — Criar as tabelas no banco
+
+   Você pode escolher uma das duas formas abaixo (o resultado é idêntico):
+
+   Opção A (recomendada) — deixar o Prisma criar tudo automaticamente:
+
+     npx prisma migrate dev --name init
+
+   Opção B — usar o arquivo SQL já escrito, que vai junto no projeto em
+   database/schema.sql (útil se você quiser rodar direto no MySQL, sem
+   passar pelo Prisma CLI):
+
+     mysql -u root -p < database/schema.sql
+     npx prisma migrate resolve --applied "0_init"
+
+   (o segundo comando só avisa o Prisma que essa migration inicial já foi
+   aplicada manualmente, para ele não tentar recriá-la depois)
+
+PASSO 7 — Popular o banco com dados de demonstração
+
+     npm run seed
+
+   Isso cria a conta de demonstração:
+     E-mail: demo@zup.com.br
+     Senha:  demo12345
+
+PASSO 8 — Rodar o projeto
+
+     npm run dev
+
+   Abra http://localhost:3000 no navegador.
+
+PASSO 9 — Testar o fluxo completo
+   - Clique em "ENTRAR" e use a conta demo acima, OU crie uma conta nova
+     em "CRIAR MEU EVENTO".
+   - Vá em "Meus eventos" e abra um evento (ou crie um novo).
+   - Copie o link público da fila e abra em outra aba (ou no celular) —
+     essa é a tela que os participantes vão usar.
+   - Preencha nome, e-mail e WhatsApp e clique em "ENTRAR NA FILA".
+   - Volte para o painel administrativo, vá em "Fila em tempo real" e
+     clique em "CHAMAR PRÓXIMO".
+   - Veja no console do terminal a mensagem de WhatsApp sendo "enviada"
+     (modo desenvolvimento, já que as credenciais reais ainda não foram
+     configuradas).
+
+PASSO 10 — (Opcional) Configurar o WhatsApp de verdade
+   Siga o guia completo em docs/WHATSAPP.md dentro do projeto.
+
+PASSO 11 — Rodar a verificação final (lint, testes e build)
+
+     npm run lint
+     npm test
+     npm run build
+
+   Se algum desses comandos apontar erro, me envie a mensagem completa do
+   terminal que eu corrijo o código.
+
+PASSO 12 — Rodar em produção localmente (opcional)
+
+     npm start
+
+------------------------------------------------------------------
+4. ONDE ENCONTRAR CADA COISA
+------------------------------------------------------------------
+
+- Lógica da fila (regras de negócio):      src/lib/queue.ts
+- Integração com WhatsApp:                  src/lib/whatsapp.ts
+- Cálculo de métricas:                      src/lib/metrics.ts
+- Autenticação:                             src/lib/auth.ts
+- Validações (Zod):                         src/lib/validations.ts
+- Segurança / multi-tenant:                 src/lib/api-helpers.ts
+- Modelo do banco de dados:                 prisma/schema.prisma
+- Script SQL do banco (já escrito):         database/schema.sql
+- Dados de demonstração:                    prisma/seed.ts
+- Logo / identidade visual:                 public/logo.png e tailwind.config.ts
+- Todas as rotas de API:                    src/app/api/**
+- Todas as páginas:                         src/app/**
+- Componentes visuais:                      src/components/**
+- Testes automatizados:                     tests/**
+- Documentação da Meta WhatsApp Cloud API:  docs/WHATSAPP.md
+- Documentação geral do projeto:            README.md
+
+------------------------------------------------------------------
+FIM DO PASSO A PASSO
+------------------------------------------------------------------

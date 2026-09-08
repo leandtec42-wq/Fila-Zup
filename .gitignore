@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+build
+dist
+.env
+.env.local
+.env.*.local
+client_secret*.json
+*.log
+npm-debug.log*
+.DS_Store
+coverage
+.vscode/*
+!.vscode/extensions.json
