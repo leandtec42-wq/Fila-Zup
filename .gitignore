@@ -6,6 +6,8 @@ dist
 .env
 .env.local
 .env.*.local
+prisma/*.db
+prisma/*.db-journal
 client_secret*.json
 *.log
 npm-debug.log*

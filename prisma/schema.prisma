@@ -1,12 +1,12 @@
 // Schema do banco de dados - Sistema de Gerenciamento de Filas e Eventos
-// Banco: MySQL (compatível com MySQL 8+, MariaDB 10.6+, PlanetScale, Railway, RDS, etc.)
+// Banco: SQLite (o banco inteiro fica em um único arquivo, prisma/dev.db)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -15,10 +15,10 @@ datasource db {
 // ---------------------------------------------------------------------------
 model User {
   id           String   @id @default(cuid())
-  name         String   @db.VarChar(160)
-  companyName  String   @db.VarChar(160)
-  email        String   @unique @db.VarChar(190)
-  passwordHash String?  @db.VarChar(255)
+  name         String
+  companyName  String
+  email        String   @unique
+  passwordHash String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -28,28 +28,24 @@ model User {
   @@map("users")
 }
 
-enum EventStatus {
-  DRAFT
-  ACTIVE
-  PAUSED
-  CLOSED
-}
+// Status possíveis: DRAFT, ACTIVE, PAUSED, CLOSED
+// (SQLite não suporta enum nativo do Prisma, por isso viram String)
 
 // ---------------------------------------------------------------------------
 // EVENT — um evento pertence a um usuário (tenant) e possui uma fila própria
 // ---------------------------------------------------------------------------
 model Event {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   userId      String
-  name        String      @db.VarChar(200)
-  description String?     @db.Text
+  name        String
+  description String?
   date        DateTime
-  startTime   String      @db.VarChar(5) // HH:mm
-  endTime     String      @db.VarChar(5) // HH:mm
-  location    String?     @db.VarChar(255)
+  startTime   String // HH:mm
+  endTime     String // HH:mm
+  location    String?
   maxParticipants Int?
-  status      EventStatus @default(DRAFT)
-  publicSlug  String      @unique @db.VarChar(64)
+  status      String   @default("DRAFT")
+  publicSlug  String   @unique
 
   // permite ou não que um participante já COMPLETED entre novamente na fila
   allowReentryAfterCompletion Boolean @default(false)
@@ -71,26 +67,19 @@ model Event {
   @@map("events")
 }
 
-enum QueueStatus {
-  WAITING
-  CALLED
-  IN_SERVICE
-  COMPLETED
-  SKIPPED
-  CANCELLED
-}
+// Status possíveis: WAITING, CALLED, IN_SERVICE, COMPLETED, SKIPPED, CANCELLED
 
 // ---------------------------------------------------------------------------
 // QUEUE_ENTRY — um participante dentro da fila de um evento específico
 // ---------------------------------------------------------------------------
 model QueueEntry {
-  id          String      @id @default(cuid())
+  id          String @id @default(cuid())
   eventId     String
   queueNumber Int
-  name        String      @db.VarChar(160)
-  email       String      @db.VarChar(190)
-  phone       String      @db.VarChar(20) // E.164, ex: +5511999999999
-  status      QueueStatus @default(WAITING)
+  name        String
+  email       String
+  phone       String // E.164, ex: +5511999999999
+  status      String @default("WAITING")
   consentWhatsApp Boolean @default(true)
 
   createdAt        DateTime  @default(now())
@@ -118,8 +107,8 @@ model QueueAction {
   id           String   @id @default(cuid())
   queueEntryId String
   eventId      String
-  action       String   @db.VarChar(40) // QUEUE_JOINED, QUEUE_CALLED, SERVICE_STARTED, ...
-  metadata     String?  @db.Text // JSON serializado com detalhes extras
+  action       String // QUEUE_JOINED, QUEUE_CALLED, SERVICE_STARTED, ...
+  metadata     String? // JSON serializado com detalhes extras
   createdAt    DateTime @default(now())
 
   queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)
@@ -130,34 +119,23 @@ model QueueAction {
   @@map("queue_actions")
 }
 
-enum WhatsAppMessageType {
-  QUEUE_JOINED
-  POSITION_UPDATE
-  CALLED
-  COMPLETED
-}
-
-enum WhatsAppMessageStatus {
-  PENDING
-  SENT
-  FAILED
-  LOGGED_DEV_MODE
-}
+// Tipos possíveis: QUEUE_JOINED, POSITION_UPDATE, CALLED, COMPLETED
+// Status possíveis: PENDING, SENT, FAILED, LOGGED_DEV_MODE
 
 // ---------------------------------------------------------------------------
 // WHATSAPP_MESSAGE — histórico de mensagens enviadas via Meta Cloud API
 // ---------------------------------------------------------------------------
 model WhatsAppMessage {
-  id                String                 @id @default(cuid())
+  id                String    @id @default(cuid())
   queueEntryId      String
   eventId           String
-  phone             String                 @db.VarChar(20)
-  messageType       WhatsAppMessageType
-  status            WhatsAppMessageStatus  @default(PENDING)
-  providerMessageId String?                @db.VarChar(190)
-  error             String?                @db.Text
-  payload           String?                @db.Text // JSON enviado à API (sem tokens)
-  createdAt         DateTime               @default(now())
+  phone             String
+  messageType       String
+  status            String    @default("PENDING")
+  providerMessageId String?
+  error             String?
+  payload           String? // JSON enviado à API (sem tokens)
+  createdAt         DateTime  @default(now())
   sentAt            DateTime?
 
   queueEntry QueueEntry @relation(fields: [queueEntryId], references: [id], onDelete: Cascade)

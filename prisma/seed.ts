@@ -1,4 +1,5 @@
-import { PrismaClient, QueueStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import type { QueueStatus } from '../src/lib/enums';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 

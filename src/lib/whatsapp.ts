@@ -1,24 +1,24 @@
 import { prisma } from '@/lib/prisma';
-import type { WhatsAppMessageType } from '@prisma/client';
+import type { WhatsAppMessageType } from '@/lib/enums';
 
 /**
- * WhatsAppService — integração real com a Meta WhatsApp Cloud API.
+ * WhatsAppService — integração real com o WhatsApp via Twilio (Sandbox / API).
  *
  * Este serviço NUNCA simula envio como se fosse real. Se as credenciais
- * (META_WHATSAPP_ACCESS_TOKEN e META_WHATSAPP_PHONE_NUMBER_ID) não estiverem
+ * (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM) não estiverem
  * configuradas no .env, o serviço entra em "modo desenvolvimento": a mensagem
  * é registrada no banco (WhatsAppMessage) com status LOGGED_DEV_MODE e o
  * conteúdo é impresso no console, mas nenhuma chamada de rede é feita.
  *
- * Quando as credenciais estão presentes, o envio é feito via HTTPS para
- * graph.facebook.com, exatamente como documentado pela Meta. Veja o passo a
- * passo completo de configuração em docs/WHATSAPP.md.
+ * Quando as credenciais estão presentes, o envio é feito via HTTPS para a
+ * API REST da Twilio (api.twilio.com). Veja o passo a passo de configuração
+ * em docs/WHATSAPP.md.
  */
 
-const GRAPH_API_VERSION = process.env.META_WHATSAPP_API_VERSION || 'v21.0';
-
 function isConfigured(): boolean {
-  return Boolean(process.env.META_WHATSAPP_ACCESS_TOKEN && process.env.META_WHATSAPP_PHONE_NUMBER_ID);
+  return Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_WHATSAPP_FROM
+  );
 }
 
 type SendResult = {
@@ -29,75 +29,45 @@ type SendResult = {
 };
 
 /**
- * Faz a chamada HTTP real para a Meta Graph API.
- * Referência: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages
+ * Faz a chamada HTTP real para a API da Twilio.
+ * Referência: https://www.twilio.com/docs/whatsapp/api
  */
-async function callGraphApi(body: Record<string, unknown>): Promise<SendResult> {
-  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+async function sendViaTwilio(to: string, text: string): Promise<SendResult> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+  const authToken = process.env.TWILIO_AUTH_TOKEN!;
+  const from = process.env.TWILIO_WHATSAPP_FROM!;
 
-  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+  const body = new URLSearchParams({
+    From: from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
+    To: to.startsWith('whatsapp:') ? to : `whatsapp:${to}`,
+    Body: text,
+  });
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        Authorization: `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(body),
+      body,
     });
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const message =
-        data?.error?.message || `Falha ao enviar mensagem (HTTP ${response.status})`;
+      const message = data?.message || `Falha ao enviar mensagem (HTTP ${response.status})`;
       return { ok: false, error: message, devMode: false };
     }
 
-    const providerMessageId: string | undefined = data?.messages?.[0]?.id;
-    return { ok: true, providerMessageId, devMode: false };
+    return { ok: true, providerMessageId: data?.sid, devMode: false };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erro desconhecido ao chamar a Meta Graph API';
+    const message = err instanceof Error ? err.message : 'Erro desconhecido ao chamar a API da Twilio';
     return { ok: false, error: message, devMode: false };
   }
-}
-
-function buildTextMessage(to: string, text: string) {
-  return {
-    messaging_product: 'whatsapp',
-    to: to.replace('+', ''),
-    type: 'text',
-    text: { preview_url: false, body: text },
-  };
-}
-
-/**
- * Mensagem via template aprovado (necessário para iniciar conversa fora da
- * janela de 24h, conforme regras da Meta). O corpo do template precisa ter
- * sido criado e aprovado previamente no Meta Business Manager, com o mesmo
- * número de variáveis usado aqui.
- */
-function buildTemplateMessage(to: string, variables: string[]) {
-  const templateName = process.env.META_WHATSAPP_TEMPLATE_NAME || 'fila_atualizacao';
-  const templateLanguage = process.env.META_WHATSAPP_TEMPLATE_LANGUAGE || 'pt_BR';
-
-  return {
-    messaging_product: 'whatsapp',
-    to: to.replace('+', ''),
-    type: 'template',
-    template: {
-      name: templateName,
-      language: { code: templateLanguage },
-      components: [
-        {
-          type: 'body',
-          parameters: variables.map((text) => ({ type: 'text', text })),
-        },
-      ],
-    },
-  };
 }
 
 async function logMessage(params: {
@@ -131,10 +101,8 @@ async function dispatch(params: {
   phone: string;
   messageType: WhatsAppMessageType;
   text: string;
-  templateVariables?: string[];
-  useTemplate?: boolean;
 }): Promise<SendResult> {
-  const { queueEntryId, eventId, phone, messageType, text, templateVariables, useTemplate } = params;
+  const { queueEntryId, eventId, phone, messageType, text } = params;
 
   if (!isConfigured()) {
     // Modo desenvolvimento: não fingimos que a API está configurada.
@@ -153,12 +121,7 @@ async function dispatch(params: {
     return { ok: true, devMode: true };
   }
 
-  const body =
-    useTemplate && templateVariables
-      ? buildTemplateMessage(phone, templateVariables)
-      : buildTextMessage(phone, text);
-
-  const result = await callGraphApi(body);
+  const result = await sendViaTwilio(phone, text);
 
   await logMessage({
     queueEntryId,
@@ -168,7 +131,7 @@ async function dispatch(params: {
     status: result.ok ? 'SENT' : 'FAILED',
     providerMessageId: result.providerMessageId,
     error: result.error,
-    payload: body,
+    payload: { text },
   });
 
   return result;
@@ -202,8 +165,6 @@ export const WhatsAppService = {
       phone: params.phone,
       messageType: 'QUEUE_JOINED',
       text,
-      useTemplate: true,
-      templateVariables: [params.name, params.eventName, String(params.queueNumber), String(params.position)],
     });
   },
 
@@ -228,8 +189,6 @@ export const WhatsAppService = {
       phone: params.phone,
       messageType: 'POSITION_UPDATE',
       text,
-      useTemplate: true,
-      templateVariables: [params.name, params.eventName, String(params.newPosition)],
     });
   },
 
@@ -256,8 +215,6 @@ export const WhatsAppService = {
       phone: params.phone,
       messageType: 'CALLED',
       text,
-      useTemplate: true,
-      templateVariables: [params.name, params.eventName, String(params.queueNumber)],
     });
   },
 
@@ -281,8 +238,6 @@ export const WhatsAppService = {
       phone: params.phone,
       messageType: 'COMPLETED',
       text,
-      useTemplate: true,
-      templateVariables: [params.name, params.eventName],
     });
   },
 };

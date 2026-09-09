@@ -3,14 +3,16 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Copy, Eye, LayoutDashboard, Share2, CheckCircle2 } from 'lucide-react';
 import { createEventSchema, type CreateEventInput } from '@/lib/validations';
 import { Input, Label, FieldError, Textarea, Select } from '@/components/ui/input';
+import { TimePicker } from '@/components/ui/time-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { todayLocalDateInput } from '@/lib/utils';
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -20,11 +22,12 @@ export default function NewEventPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CreateEventInput>({
     resolver: zodResolver(createEventSchema),
-    defaultValues: { status: 'DRAFT' },
+    defaultValues: { status: 'DRAFT', startTime: '09:00', endTime: '18:00' },
   });
 
   const onSubmit = async (data: CreateEventInput) => {
@@ -126,17 +129,29 @@ export default function NewEventPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div>
               <Label htmlFor="date">Data</Label>
-              <Input id="date" type="date" error={errors.date?.message} {...register('date')} />
+              <Input id="date" type="date" min={todayLocalDateInput()} error={errors.date?.message} {...register('date')} />
               <FieldError id="date" message={errors.date?.message} />
             </div>
             <div>
-              <Label htmlFor="startTime">Hora de início</Label>
-              <Input id="startTime" type="time" error={errors.startTime?.message} {...register('startTime')} />
+              <Label htmlFor="startTime-hour">Hora de início</Label>
+              <Controller
+                control={control}
+                name="startTime"
+                render={({ field }) => (
+                  <TimePicker idPrefix="startTime" value={field.value} onChange={field.onChange} error={errors.startTime?.message} />
+                )}
+              />
               <FieldError id="startTime" message={errors.startTime?.message} />
             </div>
             <div>
-              <Label htmlFor="endTime">Hora de encerramento</Label>
-              <Input id="endTime" type="time" error={errors.endTime?.message} {...register('endTime')} />
+              <Label htmlFor="endTime-hour">Hora de encerramento</Label>
+              <Controller
+                control={control}
+                name="endTime"
+                render={({ field }) => (
+                  <TimePicker idPrefix="endTime" value={field.value} onChange={field.onChange} error={errors.endTime?.message} />
+                )}
+              />
               <FieldError id="endTime" message={errors.endTime?.message} />
             </div>
           </div>

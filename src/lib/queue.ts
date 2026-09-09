@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { WhatsAppService } from '@/lib/whatsapp';
-import type { Event, QueueEntry, QueueStatus } from '@prisma/client';
+import type { Event, QueueEntry } from '@prisma/client';
+import type { QueueStatus } from '@/lib/enums';
 
 export class QueueError extends Error {
   code: string;

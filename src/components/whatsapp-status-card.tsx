@@ -15,7 +15,7 @@ export function WhatsAppStatusCard() {
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5 text-primary" /> Integração com WhatsApp
         </CardTitle>
-        <CardDescription>Status da integração com a Meta WhatsApp Cloud API.</CardDescription>
+        <CardDescription>Status da integração com o WhatsApp via Twilio.</CardDescription>
       </CardHeader>
       <CardContent>
         {data?.configured ? (
@@ -23,7 +23,7 @@ export function WhatsAppStatusCard() {
             <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
             <div>
               <p className="text-sm font-semibold text-foreground">Credenciais configuradas</p>
-              <p className="text-sm text-muted-foreground">As mensagens estão sendo enviadas de verdade pela Meta Cloud API.</p>
+              <p className="text-sm text-muted-foreground">As mensagens estão sendo enviadas de verdade pela Twilio.</p>
             </div>
           </div>
         ) : (
@@ -32,8 +32,8 @@ export function WhatsAppStatusCard() {
             <div>
               <p className="text-sm font-semibold text-foreground">Modo desenvolvimento (sem envio real)</p>
               <p className="text-sm text-muted-foreground">
-                Configure META_WHATSAPP_ACCESS_TOKEN e META_WHATSAPP_PHONE_NUMBER_ID no arquivo .env para
-                ativar o envio real. Veja o passo a passo em docs/WHATSAPP.md.
+                Configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM no arquivo .env
+                para ativar o envio real. Veja o passo a passo em docs/WHATSAPP.md.
               </p>
             </div>
           </div>

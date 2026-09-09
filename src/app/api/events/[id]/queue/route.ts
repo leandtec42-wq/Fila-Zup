@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireUser, requireOwnedEvent, handleApiError } from '@/lib/api-helpers';
-import type { Prisma, QueueStatus } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import type { QueueStatus } from '@/lib/enums';
 import { getWaitingPosition } from '@/lib/queue';
 
 const PAGE_SIZE_DEFAULT = 20;

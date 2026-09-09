@@ -24,6 +24,17 @@ export function formatDateTimeBR(date: Date | string): string {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(d);
 }
 
+/**
+ * Data de hoje no formato YYYY-MM-DD, respeitando o fuso horário local
+ * (evita o problema do `toISOString()` "voltar" um dia perto da meia-noite
+ * em fusos horários negativos, como o do Brasil).
+ */
+export function todayLocalDateInput(): string {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 export function formatDurationShort(ms: number): string {
   if (ms < 0) ms = 0;
   const totalSeconds = Math.floor(ms / 1000);

@@ -41,7 +41,7 @@ export function EventCard({
   }, []);
 
   return (
-    <Card className="flex flex-col p-5 transition-shadow hover:shadow-elevated">
+    <Card className="flex flex-col p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-elevated">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/dashboard/eventos/${event.id}`} className="min-w-0">
           <h3 className="truncate text-base font-semibold text-foreground hover:text-primary">{event.name}</h3>

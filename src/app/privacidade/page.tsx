@@ -5,7 +5,7 @@ export const metadata = { title: 'Política de Privacidade — Zup' };
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8 animate-fade-in-up">
       <Link href="/" className="mb-8 flex items-center gap-2">
         <Logo size={32} />
       </Link>

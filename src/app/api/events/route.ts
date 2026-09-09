@@ -43,6 +43,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createEventSchema.parse(body);
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (new Date(data.date) < today) {
+      return NextResponse.json({ error: 'A data do evento não pode estar no passado.' }, { status: 400 });
+    }
+
     let publicSlug = generatePublicSlug();
     // Garante unicidade do slug (colisão é extremamente improvável, mas checamos)
     for (let i = 0; i < 5; i++) {

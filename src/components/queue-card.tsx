@@ -49,7 +49,7 @@ export function CurrentServingCard({
   }
 
   return (
-    <div className="rounded-2xl border-2 border-primary bg-gradient-to-br from-primary to-primary-dark p-6 text-white shadow-elevated">
+    <div className="rounded-2xl border-2 border-primary bg-gradient-to-br from-primary to-primary-dark p-6 text-white shadow-glow-primary">
       <p className="text-xs font-bold uppercase tracking-widest text-accent">Agora</p>
       <div className="mt-2 flex items-end justify-between gap-4">
         <div>

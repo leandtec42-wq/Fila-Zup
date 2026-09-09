@@ -3,10 +3,11 @@
 import * as React from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createEventSchema, type CreateEventInput } from '@/lib/validations';
 import { Input, Label, FieldError, Textarea, Select } from '@/components/ui/input';
+import { TimePicker } from '@/components/ui/time-picker';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LoadingState } from '@/components/ui/loading-state';
@@ -26,6 +27,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -92,12 +94,26 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
               <FieldError id="date" message={errors.date?.message} />
             </div>
             <div>
-              <Label htmlFor="startTime">Hora de início</Label>
-              <Input id="startTime" type="time" error={errors.startTime?.message} {...register('startTime')} />
+              <Label htmlFor="startTime-hour">Hora de início</Label>
+              <Controller
+                control={control}
+                name="startTime"
+                render={({ field }) => (
+                  <TimePicker idPrefix="startTime" value={field.value} onChange={field.onChange} error={errors.startTime?.message} />
+                )}
+              />
+              <FieldError id="startTime" message={errors.startTime?.message} />
             </div>
             <div>
-              <Label htmlFor="endTime">Hora de encerramento</Label>
-              <Input id="endTime" type="time" error={errors.endTime?.message} {...register('endTime')} />
+              <Label htmlFor="endTime-hour">Hora de encerramento</Label>
+              <Controller
+                control={control}
+                name="endTime"
+                render={({ field }) => (
+                  <TimePicker idPrefix="endTime" value={field.value} onChange={field.onChange} error={errors.endTime?.message} />
+                )}
+              />
+              <FieldError id="endTime" message={errors.endTime?.message} />
             </div>
           </div>
 

@@ -85,7 +85,7 @@ function PublicShell({ children }: { children: React.ReactNode }) {
       <div className="mb-6">
         <Logo size={40} textClassName="text-xl font-bold text-primary" />
       </div>
-      <div className="w-full max-w-md">{children}</div>
+      <div className="w-full max-w-md animate-fade-in-up">{children}</div>
     </main>
   );
 }

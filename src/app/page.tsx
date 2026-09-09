@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import { Reveal } from '@/components/ui/reveal';
 import {
   QrCode,
   Users,
@@ -55,9 +56,18 @@ export default function LandingPage() {
 
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-b from-primary-50/60 to-background">
-        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
-          <div className="flex flex-col justify-center">
-            <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-accent-light px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-dark">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-primary/20 blur-3xl animate-float"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-accent/30 blur-3xl animate-float-slow"
+        />
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
+          <div className="flex flex-col justify-center animate-fade-in-up">
+            <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-accent-light px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary-dark shadow-glow-accent">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-ring" />
               Novo · Notificações reais via WhatsApp
             </span>
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-5xl">
@@ -90,7 +100,7 @@ export default function LandingPage() {
           </div>
 
           {/* Demonstração visual do dashboard */}
-          <div className="relative">
+          <div className="relative animate-fade-in-up [animation-delay:150ms] transition-transform duration-300 hover:-translate-y-1">
             <div className="rounded-3xl border border-border bg-white p-4 shadow-elevated">
               <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-primary to-primary-dark p-5 text-white">
                 <div>
@@ -150,14 +160,16 @@ export default function LandingPage() {
           </p>
         </div>
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {BENEFITS.map((benefit) => (
-            <div key={benefit.title} className="rounded-2xl border border-border bg-white p-6 shadow-card transition-shadow hover:shadow-elevated">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary">
-                <benefit.icon className="h-5 w-5" />
+          {BENEFITS.map((benefit, index) => (
+            <Reveal key={benefit.title} delay={index * 80}>
+              <div className="h-full rounded-2xl border border-border bg-white p-6 shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-elevated">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary">
+                  <benefit.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 font-semibold text-foreground">{benefit.title}</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground">{benefit.description}</p>
               </div>
-              <h3 className="mt-4 font-semibold text-foreground">{benefit.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground">{benefit.description}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -170,12 +182,14 @@ export default function LandingPage() {
             <p className="mt-3 text-white/70">Do primeiro clique ao último atendimento, em seis passos simples.</p>
           </div>
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {STEPS.map((step) => (
-              <div key={step.number} className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <span className="text-3xl font-extrabold text-accent">{step.number}</span>
-                <h3 className="mt-3 font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm text-white/70">{step.description}</p>
-              </div>
+            {STEPS.map((step, index) => (
+              <Reveal key={step.number} delay={index * 80}>
+                <div className="h-full rounded-2xl border border-white/10 bg-white/5 p-6 transition-colors duration-200 hover:bg-white/10">
+                  <span className="text-3xl font-extrabold text-accent">{step.number}</span>
+                  <h3 className="mt-3 font-semibold">{step.title}</h3>
+                  <p className="mt-1.5 text-sm text-white/70">{step.description}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -183,27 +197,29 @@ export default function LandingPage() {
 
       {/* CTA FINAL */}
       <section className="mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <QrCode className="mx-auto h-10 w-10 text-primary" />
-        <h2 className="mt-4 text-3xl font-bold tracking-tight text-foreground">
-          Pronto para organizar sua próxima fila?
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          Crie sua conta gratuitamente e publique seu primeiro evento em menos de 5 minutos.
-        </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/cadastro"
-            className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-bold text-primary-dark shadow-elevated transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            CRIAR MEU EVENTO <ArrowRight className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 rounded-xl border-2 border-primary px-6 py-3.5 text-base font-bold text-primary hover:bg-primary-50"
-          >
-            ENTRAR
-          </Link>
-        </div>
+        <Reveal>
+          <QrCode className="mx-auto h-10 w-10 text-primary" />
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-foreground">
+            Pronto para organizar sua próxima fila?
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            Crie sua conta gratuitamente e publique seu primeiro evento em menos de 5 minutos.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/cadastro"
+              className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-bold text-primary-dark shadow-elevated transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              CRIAR MEU EVENTO <ArrowRight className="h-5 w-5" />
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 rounded-xl border-2 border-primary px-6 py-3.5 text-base font-bold text-primary hover:bg-primary-50"
+            >
+              ENTRAR
+            </Link>
+          </div>
+        </Reveal>
       </section>
 
       <footer className="border-t border-border bg-white py-8">
