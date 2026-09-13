@@ -70,7 +70,12 @@ function LoginForm() {
               <FieldError id="email" message={errors.email?.message} />
             </div>
             <div>
-              <Label htmlFor="password">Senha</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                <Link href="/esqueci-senha" className="text-xs font-semibold text-primary hover:underline">
+                  Esqueceu sua senha?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

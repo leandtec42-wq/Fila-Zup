@@ -22,6 +22,25 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email('E-mail inválido'),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, 'Link de redefinição inválido'),
+    password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres').max(72),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  });
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 export const eventStatusEnum = z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'CLOSED']);
 
 export const createEventSchema = z.object({
