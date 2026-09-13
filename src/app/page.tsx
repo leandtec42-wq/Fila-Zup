@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
 import { Reveal } from '@/components/ui/reveal';
+import { ScrollProgressBar } from '@/components/ui/scroll-progress-bar';
 import {
   QrCode,
   Users,
@@ -34,6 +35,7 @@ const STEPS = [
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background">
+      <ScrollProgressBar />
       <header className="sticky top-0 z-40 border-b border-border bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Logo size={32} />
