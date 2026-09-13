@@ -13,5 +13,6 @@ client_secret*.json
 npm-debug.log*
 .DS_Store
 coverage
+*.tsbuildinfo
 .vscode/*
 !.vscode/extensions.json

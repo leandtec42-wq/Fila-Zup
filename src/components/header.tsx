@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { signOut } from 'next-auth/react';
-import { Bell, ChevronDown, LogOut, Menu } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, UserPlus } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
 
 export function Header({ userName, companyName }: { userName: string; companyName: string }) {
@@ -66,6 +66,15 @@ export function Header({ userName, companyName }: { userName: string; companyNam
               <div className="px-3 py-2">
                 <p className="text-sm font-medium text-foreground">{userName}</p>
               </div>
+              <button
+                role="menuitem"
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
+              >
+                <UserPlus className="h-4 w-4" />
+                Adicionar outra conta
+              </button>
+              <div className="my-1 h-px bg-border" />
               <button
                 role="menuitem"
                 onClick={() => signOut({ callbackUrl: '/' })}
