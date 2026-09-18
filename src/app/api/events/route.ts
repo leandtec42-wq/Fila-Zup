@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createEventSchema, normalizeMaxParticipants } from '@/lib/validations';
 import { requireUser, handleApiError } from '@/lib/api-helpers';
-import { generatePublicSlug } from '@/lib/utils';
+import { generatePublicSlug, todayLocalDateInput } from '@/lib/utils';
 
 export async function GET() {
   try {
@@ -43,9 +43,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = createEventSchema.parse(body);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (new Date(data.date) < today) {
+    if (data.date < todayLocalDateInput()) {
       return NextResponse.json({ error: 'A data do evento não pode estar no passado.' }, { status: 400 });
     }
 

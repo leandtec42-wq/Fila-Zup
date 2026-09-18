@@ -14,25 +14,42 @@ export function generatePublicSlug(): string {
   return crypto.randomBytes(6).toString('base64url'); // ~8 caracteres, url-safe
 }
 
+/**
+ * Os eventos são todos no Brasil, então toda a lógica de data/hora (exibição,
+ * "hoje", validação de data passada) é fixada em America/Sao_Paulo — nunca no
+ * fuso do dispositivo de quem está olhando a tela. Sem isso, um admin viajando
+ * (ou até o próprio servidor, se não estiver em UTC-3) veria/validaria datas
+ * erradas, porque `new Date()` e `Intl.DateTimeFormat` sem `timeZone` explícito
+ * usam o fuso local de quem executa o código, não o do evento.
+ */
+export const EVENT_TIMEZONE = 'America/Sao_Paulo';
+
 export function formatDateBR(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(d);
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeZone: EVENT_TIMEZONE }).format(d);
 }
 
 export function formatDateTimeBR(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(d);
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: EVENT_TIMEZONE }).format(d);
+}
+
+/** Data de hoje no formato YYYY-MM-DD, no fuso horário do Brasil. */
+export function todayLocalDateInput(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: EVENT_TIMEZONE }).format(new Date());
 }
 
 /**
- * Data de hoje no formato YYYY-MM-DD, respeitando o fuso horário local
- * (evita o problema do `toISOString()` "voltar" um dia perto da meia-noite
- * em fusos horários negativos, como o do Brasil).
+ * Converte uma data (YYYY-MM-DD) no início/fim do dia no Brasil para um
+ * instante UTC real. O Brasil não usa mais horário de verão desde 2019, então
+ * o deslocamento -03:00 é sempre válido, sem casos especiais de DST.
  */
-export function todayLocalDateInput(): string {
-  const now = new Date();
-  const offsetMs = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+export function brazilDayStartUtc(dateStr: string): Date {
+  return new Date(`${dateStr}T00:00:00-03:00`);
+}
+
+export function brazilDayEndUtc(dateStr: string): Date {
+  return new Date(`${dateStr}T23:59:59.999-03:00`);
 }
 
 export function formatDurationShort(ms: number): string {

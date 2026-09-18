@@ -1,25 +1,23 @@
 import { prisma } from '@/lib/prisma';
 import type { QueueEntry } from '@prisma/client';
+import { todayLocalDateInput, brazilDayStartUtc, brazilDayEndUtc } from '@/lib/utils';
 
 export type DateRange = { from: Date; to: Date };
 
 export function resolveRange(range: 'today' | '7d' | '30d' | 'custom', from?: string, to?: string): DateRange {
-  const now = new Date();
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
   if (range === 'custom' && from && to) {
     return { from: new Date(from), to: new Date(to) };
   }
 
+  const todayStr = todayLocalDateInput();
+  const endOfToday = brazilDayEndUtc(todayStr);
+
   if (range === 'today') {
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    return { from: start, to: endOfToday };
+    return { from: brazilDayStartUtc(todayStr), to: endOfToday };
   }
 
   const days = range === '30d' ? 30 : 7;
-  const start = new Date(now);
-  start.setDate(start.getDate() - days);
-  start.setHours(0, 0, 0, 0);
+  const start = new Date(brazilDayStartUtc(todayStr).getTime() - days * 24 * 60 * 60 * 1000);
   return { from: start, to: endOfToday };
 }
 
