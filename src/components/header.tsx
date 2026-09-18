@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { signOut } from 'next-auth/react';
 import { Bell, ChevronDown, LogOut, Menu, UserPlus } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
@@ -88,11 +89,13 @@ export function Header({ userName, companyName }: { userName: string; companyNam
         </div>
       </div>
 
-      {mobileNavOpen && (
-        <div className="fixed inset-0 top-16 z-20 bg-white lg:hidden">
-          <Sidebar mobile />
-        </div>
-      )}
+      {mobileNavOpen &&
+        createPortal(
+          <div className="fixed inset-0 top-16 z-20 bg-white lg:hidden">
+            <Sidebar mobile />
+          </div>,
+          document.body
+        )}
     </header>
   );
 }
